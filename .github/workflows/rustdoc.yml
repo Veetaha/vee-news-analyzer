@@ -6,7 +6,7 @@ name: rustdoc
     branches:
       - master
 env:
-  RUST_DOC_TOOLCHAIN: ~
+  RUST_DOC_TOOLCHAIN: nightly-2020-03-26
 jobs:
   rustdoc:
     runs-on: ubuntu-latest

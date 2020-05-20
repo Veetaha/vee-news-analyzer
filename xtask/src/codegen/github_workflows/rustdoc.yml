@@ -13,7 +13,7 @@ env:
   # Nightly, because of the feature of namespaces as markdown links.
   # Feel free to upgrade this to a newer nightly, just make sure
   # `cargo +nightly-XXX docs --workspace` compiles without any errors
-  RUST_DOC_TOOLCHAIN:
+  RUST_DOC_TOOLCHAIN: nightly-2020-03-26
 
 jobs:
   rustdoc:
