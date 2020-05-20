@@ -15,47 +15,12 @@ services:
       - xpack.security.enabled=false
       - node.name=es01
       - cluster.name=es-docker-cluster
-      - discovery.seed_hosts=es02,es03
-      - cluster.initial_master_nodes=es01,es02,es03
+      - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
     ports: ["${VNA_ES_PORT}:9200"]
     volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_1:/usr/share/elasticsearch/data:rw"]
-
-    image: ${VNA_ES_IMAGE}
-    ulimits: { memlock: { soft: -1, hard: -1 } }
-    networks: [elastic]
-
-  es02:
-    container_name: es02
-    environment:
-      - xpack.security.enabled=false
-      - node.name=es02
-      - cluster.name=es-docker-cluster
-      - discovery.seed_hosts=es01,es03
-      - cluster.initial_master_nodes=es01,es02,es03
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_2:/usr/share/elasticsearch/data:rw"]
-
-    image: ${VNA_ES_IMAGE}
-    ulimits: { memlock: { soft: -1, hard: -1 } }
-    networks: [elastic]
-
-  es03:
-    container_name: es03
-    environment:
-      - xpack.security.enabled=false
-      - node.name=es03
-      - cluster.name=es-docker-cluster
-      - discovery.seed_hosts=es01,es02
-      - cluster.initial_master_nodes=es01,es02,es03
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_3:/usr/share/elasticsearch/data:rw"]
 
     image: ${VNA_ES_IMAGE}
     ulimits: { memlock: { soft: -1, hard: -1 } }
