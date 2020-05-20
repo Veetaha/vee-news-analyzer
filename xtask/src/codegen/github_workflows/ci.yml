@@ -1,6 +1,4 @@
 # See `cargo xtask codegen` for details
-# Feel free to update the version when an new one is released
-# Based on this particular value we also generate the `rust-toolchain` file
 
 .expand-yaml-anchors:
   # We don't cache `~/.cargo.bin` since we cannot `hashFiles('~/.cargo/.cartes.toml')`
@@ -63,7 +61,6 @@ env:
   RUSTFLAGS: --deny warnings -Cdebuginfo=0
   RUSTDOCFLAGS: --deny warnings
 
-# We run lightweight jobs like `cargo-deny` and `notify-on-fail-at-master-branch` on GitHub's runners.
 # Job names are laconic to simplify navigating through them in github's ui.
 jobs:
   # Audit Rust vulnerabilities, licenses, duplicated deps as specified in `deny.toml`
