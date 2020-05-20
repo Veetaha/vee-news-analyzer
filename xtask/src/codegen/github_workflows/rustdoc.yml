@@ -32,7 +32,9 @@ jobs:
     - run: cargo +${{ env.RUST_DOC_TOOLCHAIN }} doc --workspace --no-deps
 
     - name: Deploy Docs
-      uses: peaceiris/actions-gh-pages@v3.6.1
+      # taken from https://github.com/rust-analyzer/rust-analyzer/blob/ba51b7b04588cea07ab2cccd1c5f676c8546cb57/.github/workflows/rustdoc.yaml#L33
+      # for some reason latest version of this action doesn't work?...
+      uses: peaceiris/actions-gh-pages@364c31d33bb99327c77b3a5438a83a357a6729ad # v3.4.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
