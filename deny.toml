@@ -25,7 +25,6 @@ deny = [
     # color-backtrace is nice but brings in too many dependencies and that are often outdated, so not worth it for us.
     { name = "color-backtrace" },
 
-    # This constraint was taken from `tonic` deny.toml, but we do use `dirs`
     # https://www.reddit.com/r/rust/comments/ga7f56/why_dirs_and_directories_repositories_have_been/
     # dirs crate has a lot of dependencies and there are better alternatives
     { name = "dirs" },
