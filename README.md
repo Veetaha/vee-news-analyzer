@@ -12,13 +12,19 @@ in [`Elasticsearch`](https://github.com/elastic/elasticsearch) cluster and analy
 the obtained textual information using various `Elasticsearch` analysis APIs
 along with other 3-d party services.
 
-## Bootstrap
+# Bootstrap
 
 Deploy local `Elasticsearch` cluster of 3 data nodes on your local machine, also
 spin up a `Kibana` instance with auth-less access to that cluster.
 ```
 docker-compose up
 ```
-The configuration tweaks for this is available in `.env` file
+The configuration tweaks for this is available in `.env` file.
+You should create it similar to the provided `EXAMPLE.env` template.
+
+
 
 // FIXME: add cli bootstrap guide once it is formed.
+
+# Attribution
+Powered by https://newsapi.org.
