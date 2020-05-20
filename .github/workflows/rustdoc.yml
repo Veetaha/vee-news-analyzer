@@ -18,7 +18,7 @@ jobs:
           toolchain: "${{ env.RUST_DOC_TOOLCHAIN }}"
           profile: minimal
           override: true
-      - run: "cargo doc +${{ env.RUST_DOC_TOOLCHAIN }} --workspace --no-deps"
+      - run: "cargo +${{ env.RUST_DOC_TOOLCHAIN }} doc --workspace --no-deps"
       - name: Deploy Docs
         uses: peaceiris/actions-gh-pages@v3.6.1
         with:
