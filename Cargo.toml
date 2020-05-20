@@ -1,9 +1,19 @@
-[package]
-name = "vee-news-analyzer"
-version = "0.1.0"
-authors = ["Veetaha <gerzoh1@gmail.com>"]
-edition = "2018"
+[workspace]
+members = ["crates/*"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.dev]
+# disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much.
+debug = 0
 
-[dependencies]
+
+# [profile.release.package.proc-macro2]
+# opt-level = 0
+# [profile.release.package.quote]
+# opt-level = 0
+# [profile.release.package.syn]
+# opt-level = 0
+# [profile.release.package.serde_derive]
+# opt-level = 0
+# [profile.release.package.xtask]
+# opt-level = 0
