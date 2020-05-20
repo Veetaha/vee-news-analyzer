@@ -1,10 +1,8 @@
 [package]
-name = "vna"
-description = "vee_news_analyzer"
+name = "stdx"
 version = "0.1.0"
 authors = ["veetaha <veetaha2@gmail.com>"]
 edition = "2018"
 publish = false
 
 [dependencies]
-structopt = "0.3.14"

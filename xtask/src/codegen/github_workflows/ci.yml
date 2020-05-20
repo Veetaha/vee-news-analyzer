@@ -1,0 +1,120 @@
+# See `cargo xtask codegen` for details
+# Feel free to update the version when an new one is released
+# Based on this particular value we also generate the `rust-toolchain` file
+
+.expand-yaml-anchors:
+  # We don't cache `~/.cargo.bin` since we cannot `hashFiles('~/.cargo/.cartes.toml')`
+  # becase this is out of $GITHUB_WORKSPACE dir
+  - &cache-cargo-registry-index
+    name: Cache cargo/registry/index
+    uses: actions/cache@v1
+    with:
+      path: ~/.cargo/registry/index
+      key: |
+        cargo-registry-index-${{ matrix.os }}-${{ matrix.channel }}-${{ hashFiles('**/Cargo.toml') }}
+      restore-keys: |
+        cargo-registry-index-${{ matrix.os }}-${{ matrix.channel }}
+
+  - &cache-cargo-registry-cache
+    name: Cache cargo/registry/cache
+    uses: actions/cache@v1
+    with:
+      path: ~/.cargo/registry/cache
+      key: |
+        cargo-registry-cache-${{ matrix.os }}-${{ matrix.channel }}-${{ hashFiles('**/Cargo.toml') }}
+      restore-keys: |
+        cargo-registry-cache-${{ matrix.os }}-${{ matrix.channel }}
+
+  - &cache-cargo-git-db
+    name: Cache cargo/git/db
+    uses: actions/cache@v1
+    with:
+      path: ~/.cargo/git/db
+      key: |
+        cargo-git-db-${{ matrix.os }}-${{ matrix.channel }}-${{ hashFiles('**/Cargo.toml') }}
+      restore-keys: |
+        cargo-git-db-${{ matrix.os }}-${{ matrix.channel }}
+
+  - &checkout-repo
+      name: Checkout repository
+      uses: actions/checkout@v2
+
+  - &ensure-rust-toolchain-from-matrix
+    name: Install toolchain via rustup
+    run: |
+      rustup set profile minimal
+      rustup toolchain install ${{ matrix.channel }}
+
+name: cicd
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+env:
+  # Just a reassurance to mitigate sudden network connection problems
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: full
+  # We don't need any debug symbols on ci, this also speeds up builds a bunch
+  RUSTFLAGS: --deny warnings -Cdebuginfo=0
+  RUSTDOCFLAGS: --deny warnings
+
+# We run lightweight jobs like `cargo-deny` and `notify-on-fail-at-master-branch` on GitHub's runners.
+# Job names are laconic to simplify navigating through them in github's ui.
+jobs:
+  # Audit Rust vulnerabilities, licenses, duplicated deps as specified in `deny.toml`
+  cargo-deny-check:
+    env: { RUSTC_WRAPPER: "" }
+    name: cargo deny check
+    runs-on: ubuntu-latest
+    steps:
+      - <<: *checkout-repo
+      - uses: EmbarkStudios/cargo-deny-action@master
+
+  rust-lint-and-test:
+    name: rust lint and test
+    runs-on: "${{ matrix.os }}"
+
+    strategy:
+      matrix: { os: [ubuntu-latest], channel: [<stable>] }
+
+    steps:
+      - <<: *checkout-repo
+      - <<: *cache-cargo-registry-index
+      - <<: *cache-cargo-registry-cache
+      - <<: *cache-cargo-git-db
+      - <<: *ensure-rust-toolchain-from-matrix
+
+      - run: rustup component add clippy rustfmt
+
+      - run: cargo +${{ matrix.channel }} clippy --workspace
+      - run: cargo +${{ matrix.channel }} fmt --all -- --check
+
+      - run: cargo +${{ matrix.channel }} build --workspace
+      - run: cargo +${{ matrix.channel }} test --workspace --no-run
+      - run: cargo +${{ matrix.channel }} test --workspace
+
+
+  # Run cicd on unstable compiler version to test forward compatibility
+  rust-test-on-unstable:
+    needs: rust-lint-and-test
+    name: rust unstable test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix: { os: [ubuntu-latest], channel: [beta, nightly] }
+
+    steps:
+      - <<: *checkout-repo
+      - <<: *cache-cargo-registry-index
+      - <<: *cache-cargo-registry-cache
+      - <<: *cache-cargo-git-db
+      - <<: *ensure-rust-toolchain-from-matrix
+
+      - run: cargo +${{ matrix.channel }} build --workspace
+      - run: cargo +${{ matrix.channel }} test --workspace --no-run
+      - run: cargo +${{ matrix.channel }} test --workspace

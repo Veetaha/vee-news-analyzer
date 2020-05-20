@@ -1,0 +1,41 @@
+name: rustdoc
+on:
+  push:
+    branches: [master]
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: -D warnings
+  RUSTUP_MAX_RETRIES: 10
+
+env:
+  # Nightly, because of the feature of namespaces as markdown links.
+  # Feel free to upgrade this to a newer nightly, just make sure
+  # `cargo +nightly-XXX docs --workspace` compiles without any errors
+  RUST_DOC_TOOLCHAIN:
+
+jobs:
+  rustdoc:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.RUST_DOC_TOOLCHAIN }}
+        profile: minimal
+        override: true
+        components: rustfmt, rust-src
+
+    - run: cargo doc +${{ env.RUST_DOC_TOOLCHAIN }} --workspace --no-deps
+
+    - name: Deploy Docs
+      uses: peaceiris/actions-gh-pages@v3.6.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
+        publish_dir: ./target/doc
+        force_orphan: true

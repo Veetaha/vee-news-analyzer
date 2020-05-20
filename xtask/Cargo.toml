@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+authors = ["veetaha <veetaha2@gmail.com>"]
+edition = "2018"
+publish = false
+
+[lib]
+doctest = false
+
+# In ideal world there should be no dependencies here.
+# The goal of this module is to compile as fast as possible sacrificing anything else.
+# Feel free to remove excess dependencies and handroll own solution.
+# Think twice before adding new dependencies here!
+[dependencies]
+pico-args = "0.3.1"
+anyhow = "1.0"
+yaml-rust = "0.4"
+yaml-merge-keys = "0.4"

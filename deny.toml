@@ -1,0 +1,59 @@
+# See docs: https://embarkstudios.github.io/cargo-deny/checks/index.html
+# Some inspiration is drawn from: https://github.com/hyperium/tonic/blob/master/deny.toml
+
+[advisories]
+vulnerability = "deny"
+unmaintained = "deny"
+yanked = "deny"
+ignore = []
+
+# The lint level for crates with security notices. Note that as of
+# 2019-12-17 there are no security notice advisories in
+# https://github.com/rustsec/advisory-db
+notice = "deny"
+
+# severity-threshold = "None" | "Low" | "Medium" | "High" | "Critical"
+
+[bans]
+multiple-versions = "deny"
+skip = []
+# Skips the entire tree of the crate dependencies:
+skip-tree = [
+    # { name = "crate_name_here", version = "=0.11.0", depth = 20 },
+]
+deny = [
+    # color-backtrace is nice but brings in too many dependencies and that are often outdated, so not worth it for us.
+    { name = "color-backtrace" },
+
+    # This constraint was taken from `tonic` deny.toml, but we do use `dirs`
+    # https://www.reddit.com/r/rust/comments/ga7f56/why_dirs_and_directories_repositories_have_been/
+    # dirs crate has a lot of dependencies and there are better alternatives
+    { name = "dirs" },
+    { name = "dirs-sys" },
+
+    # deprecated
+    { name = "quickersort" },
+
+    # term is not fully maintained, and termcolor is replacing it
+    { name = "term" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[licenses]
+unlicensed = "deny"
+copyleft = "deny"
+private = { ignore = true }
+
+# run `cargo deny list` to see which crates use which license
+allow = [ ]
+deny = []
+default = "deny"
+allow-osi-fsf-free = "neither"
+
+# We want really high confidence when inferring licenses from text
+confidence-threshold = 0.92
