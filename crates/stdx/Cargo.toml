@@ -7,3 +7,4 @@ publish = false
 license = "MIT"
 
 [dependencies]
+log = "0.4.8"

@@ -7,3 +7,8 @@ publish = false
 license = "MIT"
 
 [dependencies]
+anyhow = "1.0.31"
+log = "0.4.8"
+env_logger = "0.7.1"
+elasticsearch = "7.7.0-alpha.1"
+serde = "1.0.110"

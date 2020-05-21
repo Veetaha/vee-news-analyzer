@@ -9,3 +9,10 @@ license = "MIT"
 
 [dependencies]
 structopt = "0.3.14"
+anyhow = "1.0.31"
+log = "0.4.8"
+env_logger = "0.7.1"
+url = "2.1.1"
+
+stdx = { path = "../stdx" }
+vna_data_sync = { path = "../vna_data_sync" }
