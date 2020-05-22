@@ -1,0 +1,23 @@
+[package]
+name = "vna_elasticsearch"
+version = "0.1.0"
+authors = ["veetaha <veetaha2@gmail.com>"]
+edition = "2018"
+publish = false
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+log = "0.4.8"
+env_logger = "0.7.1"
+elasticsearch = "7.7.0-alpha.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+url = "2.1"
+
+# we are pretty tighted to newsapi, importing it here won't bee much of a bad code...
+newsapi = "0.3.1"
+
+# FIXME: migrate to async (initial impl uses full blocking for simplicity)
+futures = { version = "0.3.5", default_features = false, features = ["executor"] }
+tokio = { version = "0.2.21", features = ["full"] }

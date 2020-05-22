@@ -1,7 +1,7 @@
 //! Various missing batteries for Rust
 
-/// Struct that runs the specified closure on its `drop()` call
-pub struct Guard<F: FnOnce()>(Option<F>);
+/// Struct that runs the specified closure in its [`Drop`](Drop) impl
+struct Guard<F: FnOnce()>(Option<F>);
 
 impl<F: FnOnce()> Drop for Guard<F> {
     fn drop(&mut self) {
@@ -9,11 +9,13 @@ impl<F: FnOnce()> Drop for Guard<F> {
     }
 }
 
-/// Returns a struct which runs the specified closure on its `drop()` call
-pub fn on_drop<F: FnOnce()>(f: F) -> Guard<F> {
+/// Returns a struct which runs the specified closure in its [`Drop`](Drop) impl
+pub fn on_drop<F: FnOnce()>(f: F) -> impl Drop {
     Guard(Some(f))
 }
 
+/// Returns a struct which prints execution time info in its [`Drop`](Drop) impl.
+///  It logs the inital call as well.
 pub fn debug_time_it(label: &'static str) -> impl Drop {
     let start = std::time::Instant::now();
     log::debug!("{}: started", label);

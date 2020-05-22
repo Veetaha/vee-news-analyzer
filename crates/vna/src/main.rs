@@ -1,7 +1,7 @@
 //! vee-news-analyzer cli entrypoint
 
 use anyhow::Result;
-use std::str::FromStr;
+use std::{num::NonZeroU32, str::FromStr};
 use structopt::StructOpt;
 use url::Url;
 
@@ -21,6 +21,14 @@ enum CliArgs {
         /// Maximum amount of news to retain in Elasticsearch database.
         #[structopt(long, default_value = "100000")]
         max_news: u64,
+
+        /// Number of shards to use for the Elasticsearch indices (min: 1)
+        #[strctopt(long, default_value = "1")]
+        n_shards: NonZeroU32,
+
+        /// Number of relicas to create for the Elasticsearch indices
+        #[structopt(long, default_value = "0")]
+        n_replicas: u32,
 
         #[structopt(flatten)]
         elasticsearch: ElasticsearchArgs,
@@ -63,6 +71,10 @@ struct NewsApiArgs {
 }
 
 fn main() -> Result<()> {
+    if let Err(err) = dotenv::dotenv() {
+        log::debug!("Dotenv could not be loaded: {:?}", err);
+    }
+
     env_logger::init();
 
     std::path::PathBuf::from_str("").unwrap();
@@ -77,9 +89,11 @@ fn main() -> Result<()> {
             scrape_interval,
             elasticsearch,
             news_api,
+            n_replicas,
+            n_shards,
         } => {
             eprintln!("Running data sync task...");
-            vna_data_sync::run(vna_data_sync::Opts {
+            vna_data_sync::run(vna_data_sync::RunOpts {
                 es_url: elasticsearch.es_url,
                 news_api_key: news_api.news_api_key,
                 scrape_interval,
