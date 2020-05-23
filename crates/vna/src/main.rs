@@ -1,7 +1,7 @@
 //! vee-news-analyzer cli entrypoint
 
 use anyhow::Result;
-use std::{num::NonZeroU32, str::FromStr};
+use std::num::NonZeroU32;
 use structopt::StructOpt;
 use url::Url;
 
@@ -19,11 +19,11 @@ enum CliArgs {
         scrape_interval: Option<u32>,
 
         /// Maximum amount of news to retain in Elasticsearch database.
-        #[structopt(long, default_value = "100000")]
+        #[structopt(long, default_value = "100")]
         max_news: u64,
 
         /// Number of shards to use for the Elasticsearch indices (min: 1)
-        #[strctopt(long, default_value = "1")]
+        #[structopt(long, default_value = "1")]
         n_shards: NonZeroU32,
 
         /// Number of relicas to create for the Elasticsearch indices
@@ -70,14 +70,13 @@ struct NewsApiArgs {
     news_api_key: String,
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     if let Err(err) = dotenv::dotenv() {
         log::debug!("Dotenv could not be loaded: {:?}", err);
     }
 
     env_logger::init();
-
-    std::path::PathBuf::from_str("").unwrap();
 
     let cli_args = CliArgs::from_args();
 
@@ -93,13 +92,27 @@ fn main() -> Result<()> {
             n_shards,
         } => {
             eprintln!("Running data sync task...");
-            vna_data_sync::run(vna_data_sync::RunOpts {
+            let time = std::time::Instant::now();
+            let stats = vna_data_sync::run(vna_data_sync::RunOpts {
                 es_url: elasticsearch.es_url,
                 news_api_key: news_api.news_api_key,
                 scrape_interval,
                 max_news,
-            })?;
-            eprintln!("Data sync task has finished")
+                n_replicas,
+                n_shards,
+            })
+            .await?;
+            eprintln!(
+                "Data sync task has finished\n\
+                took: {:?},\n\
+                new_index_name: {},\n\
+                total_processed: {},\n\
+                total_indexed: {}\n",
+                time.elapsed(),
+                stats.new_index_name,
+                stats.total_processed,
+                stats.total_indexed,
+            );
         }
         CliArgs::Stats { .. } => {
             todo!();
