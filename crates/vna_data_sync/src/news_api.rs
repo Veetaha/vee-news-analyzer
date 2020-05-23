@@ -16,11 +16,8 @@ impl ArticlesPagination<'_> {
             total: None,
         }
     }
-}
 
-impl Iterator for ArticlesPagination<'_> {
-    type Item = Articles;
-    fn next(&mut self) -> Option<Articles> {
+    pub async fn next(&mut self) -> Option<Articles> {
         if matches!(self.total, Some(total) if Self::MAX_PAGE_SIZE * (self.next_page_index - 1) >= total as u32)
         {
             return None;
@@ -33,7 +30,11 @@ impl Iterator for ArticlesPagination<'_> {
             .query("*")
             .everything();
 
-        let articles: Articles = client.send().unwrap_or_else(|err| {
+        let articles = tokio::task::spawn_blocking(move || client.send())
+            .await
+            .unwrap();
+
+        let articles: Articles = articles.unwrap_or_else(|err| {
             panic!("Error while paginating thru the news api: {:?}", err);
         });
 

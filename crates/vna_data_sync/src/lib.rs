@@ -1,8 +1,9 @@
 use anyhow::Result;
-use elasticsearch::{http::request::NdBody, params::Refresh, Elasticsearch};
+use elasticsearch::params::Refresh;
 use newsapi::payload::article::{Article as NewsApiArticle, ArticleSource};
 use std::{iter, num::NonZeroU32, time::Duration};
 use url::Url;
+use vna_es; // FIMXE: rename vna_es -> vna_es to shorten the code
 
 mod news_api;
 
@@ -19,6 +20,7 @@ pub struct RunOpts {
 pub struct Stats {
     pub total_processed: u64,
     pub total_indexed: u64,
+    pub new_index_name: String,
 }
 
 pub async fn run(
@@ -30,29 +32,40 @@ pub async fn run(
         news_api_key,
         scrape_interval,
     }: RunOpts,
-) -> Result<()> {
-    let elastic = &vna_elasticsearch::create_elasticsearch_client(es_url)?;
+) -> Result<Stats> {
+    let elastic = &vna_es_utils::create_elasticsearch_client(es_url)?;
 
     let scrape = || async {
         let _t = stdx::debug_time_it("Scraping news api");
 
-        vna_elasticsearch::create_articles_index(&vna_elasticsearch::CreateArticlesIndexOpts {
+        let prev_index_version = vna_es::Article::fetch_index_version(elastic).await?;
+        let new_index_version = prev_index_version
+            .map(vna_es::IndexVersion::incremented)
+            .unwrap_or_default();
+
+        vna_es::Article::create_index(&vna_es::CreateArticlesIndexOpts {
             elastic,
-            version: 1,
+            version: new_index_version,
             number_of_replicas: n_replicas,
             number_of_shards: n_shards,
         })
         .await?;
 
-        let mut stats = Stats::default();
+        let mut stats = Stats {
+            total_indexed: 0,
+            total_processed: 0,
+            new_index_name: new_index_version.attach_to_alias(vna_es::Article::INDEX_ALIAS),
+        };
+        let mut article_pages = news_api::ArticlesPagination::new(&news_api_key);
 
-        for batch in news_api::ArticlesPagination::new(&news_api_key) {
-            stats.total_processed += batch.articles.len() as u64;
+        while let Some(page) = article_pages.next().await {
+            stats.total_processed += page.articles.len() as u64;
 
-            let mut bulk_body: Vec<_> = batch
+            let bulk_body: Vec<_> = page
                 .articles
                 .into_iter()
                 .filter_map(article_doc_from_news_api)
+                .take((max_news - stats.total_indexed) as usize)
                 .map(|doc| {
                     let header = "{\"index\":{}}".to_owned();
                     let doc = serde_json::to_string(&doc).unwrap();
@@ -61,33 +74,34 @@ pub async fn run(
                 .flatten()
                 .collect();
 
-            stats.total_indexed += bulk_body.len() as u64; // FIXME: be more pessimistic (check response)
+            let n_bulk_docs = bulk_body.len() / 2;
 
-            elastic
-                .bulk(elasticsearch::BulkParts::Index(
-                    vna_elasticsearch::Article::INDEX_ALIAS,
-                ))
-                .body(bulk_body)
-                .refresh(Refresh::WaitFor)
-                .wait_for_active_shards("all")
-                .send()
-                .await?;
+            log::debug!("Ingesting {}", n_bulk_docs);
+
+            stats.total_indexed += n_bulk_docs as u64; // FIXME: be more pessimistic (check response)
+
+            if bulk_body.len() != 0 {
+                elastic
+                    .bulk(elasticsearch::BulkParts::Index(&stats.new_index_name))
+                    .body(bulk_body)
+                    .refresh(Refresh::WaitFor)
+                    .send()
+                    .await?;
+            }
 
             if stats.total_indexed >= max_news {
                 break;
             }
         }
 
-        // TODO: set the alias to new index, afterwards delete the old index
-
-        Result::<()>::Ok(())
+        vna_es::Article::update_index_alias(elastic, prev_index_version, new_index_version).await?;
+        Result::<_>::Ok(stats)
     };
 
     let scrape_interval = match &scrape_interval {
         Some(it) => *it,
         None => {
-            scrape().await?;
-            return Ok(());
+            return scrape().await;
         }
     };
     let scrape_interval = Duration::from_millis(scrape_interval as u64);
@@ -98,12 +112,12 @@ pub async fn run(
     }
 }
 
-fn article_doc_from_news_api(article: NewsApiArticle) -> Option<vna_elasticsearch::Article> {
+fn article_doc_from_news_api(article: NewsApiArticle) -> Option<vna_es::Article> {
     match article {
         NewsApiArticle {
             source:
                 ArticleSource {
-                    id: Some(source_id),
+                    id: _,
                     name: source_name,
                 },
             author: Some(author),
@@ -117,11 +131,10 @@ fn article_doc_from_news_api(article: NewsApiArticle) -> Option<vna_elasticsearc
             if !has_meaningful_text_content(&content) {
                 return None;
             }
-            Some(vna_elasticsearch::Article {
+            Some(vna_es::Article {
                 author,
                 title,
                 source_name,
-                source_id,
                 content,
                 description,
                 published_at,
@@ -133,6 +146,8 @@ fn article_doc_from_news_api(article: NewsApiArticle) -> Option<vna_elasticsearc
     }
 }
 
-fn has_meaningful_text_content(suspect: &str) -> bool {
-    suspect.match_indices('\n').count() >= 2
+fn has_meaningful_text_content(_suspect: &str) -> bool {
+    true
+    // FIXME:
+    // suspect.match_indices('\n').count() >= 2
 }
