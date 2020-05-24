@@ -125,7 +125,7 @@ pub async fn run(
             vna_es::Article::delete_index(elastic, version).await?;
         }
 
-        Result::<_>::Ok(stats)
+        Ok(stats)
     };
 
     let scrape_interval = match &scrape_interval {

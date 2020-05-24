@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use elasticsearch::{
     http::response::Response as ElasticsearchResponse,
     indices::{IndicesCreateParts, IndicesDeleteParts, IndicesGetAliasParts},
+    snapshot::SnapshotCreateRepositoryParts,
     Elasticsearch, SearchParts,
 };
 pub use index_version::IndexVersion;
@@ -11,7 +12,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::num::NonZeroU32;
-use std::ops::Deref;
+use std::{ops::Deref, path::Path};
 use vna_es_utils::{es_types, Success};
 
 #[derive(Debug)]
@@ -329,4 +330,81 @@ pub struct CreateArticlesIndexOpts<'a> {
     pub version: IndexVersion,
     pub number_of_shards: NonZeroU32,
     pub number_of_replicas: u32,
+}
+
+pub mod snapshots {
+    use super::*;
+    use elasticsearch::snapshot::SnapshotCreateParts;
+
+    pub async fn register_repo(
+        elastic: &Elasticsearch,
+        fs_path: &Path,
+        repo: &stdx::NonHollowString,
+    ) -> Result<()> {
+        let fs_path = fs_path
+            .to_str()
+            .context("Snapshot repo path contains invalid UTF8 characters")?;
+
+        elastic
+            .snapshot()
+            .create_repository(SnapshotCreateRepositoryParts::Repository(repo))
+            .body(json!({
+                "type": "fs",
+                "settings": { "location": fs_path, }
+            }))
+            .send()
+            .await?
+            .success()
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn take_snapshot(
+        elastic: &Elasticsearch,
+        repo: &stdx::NonHollowString,
+        snapshot: &stdx::NonHollowString,
+    ) -> Result<()> {
+        elastic
+            .snapshot()
+            .create(SnapshotCreateParts::RepositorySnapshot(repo, snapshot))
+            .wait_for_completion(true)
+            .send()
+            .await?
+            .success()
+            .await?;
+        Ok(())
+    }
+
+    pub async fn restore_from_snapshot(
+        elastic: &Elasticsearch,
+        repo: &stdx::NonHollowString,
+        snapshot: &stdx::NonHollowString,
+        index_name: &Option<stdx::NonHollowString>,
+    ) -> Result<()> {
+        let snap = elastic.snapshot();
+        let restore = snap.restore(
+            elasticsearch::snapshot::SnapshotRestoreParts::RepositorySnapshot(repo, snapshot),
+        );
+
+        if let Some(index_name) = index_name {
+            // comma-separated list of indices
+            restore
+                .body(json!({ "indices": index_name.deref() }))
+                .wait_for_completion(true)
+                .send()
+                .await?
+                .success()
+                .await?;
+        } else {
+            restore
+                .wait_for_completion(true)
+                .send()
+                .await?
+                .success()
+                .await?;
+        }
+
+        Ok(())
+    }
 }

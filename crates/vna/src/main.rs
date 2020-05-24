@@ -24,8 +24,7 @@ struct CliArgs {
 
 #[derive(Debug, StructOpt)]
 enum CliSubcommand {
-    /// Run data synchronization job that will call out to external APIs that
-    /// provide news data (currently this is only https://newsapi.org/)
+    /// Run data synchronization job that will use the external data source
     DataSync {
         /// Number of milliseconds to wait between successive scrapes of the
         /// external APIs. If none is specified the job is run only one time
@@ -71,6 +70,48 @@ enum CliSubcommand {
         /// text fields
         #[structopt(long)]
         field_name: Option<String>,
+    },
+
+    /// Elasticsearch snapshots management commands
+    Snapshots(Snapshots),
+}
+
+#[derive(Debug, StructOpt)]
+enum Snapshots {
+    /// Register snapshots repository dir on the file-system
+    RegisterRepo {
+        /// Name of the repo to create
+        #[structopt(long, default_value = "fs_repo")]
+        repo_name: stdx::NonHollowString,
+
+        /// Path to thre directory where to put the snapshots
+        #[structopt(long, default_value = "/mnt/snapshots")]
+        path: PathBuf,
+    },
+    /// Create a snapshot of all indices in the cluster, waits unitil the
+    /// completion of this operation
+    Commit {
+        /// Name of the repo to put the snapshot into
+        #[structopt(long, default_value = "fs_repo")]
+        repo_name: stdx::NonHollowString,
+
+        /// Name of the snapshot to produce
+        #[structopt(long, default_value = "vna_snapshot")]
+        snapshot_name: stdx::NonHollowString,
+    },
+    /// Restore Elasticsearch cluster from the given snapshot
+    RestoreFrom {
+        /// Name of the repo to look for the snapshot
+        #[structopt(long, default_value = "fs_repo")]
+        repo_name: stdx::NonHollowString,
+
+        /// Name of the snapshot use for restoring
+        #[structopt(long, default_value = "vna_snapshot")]
+        snapshot_name: stdx::NonHollowString,
+
+        /// Name of the index to restore (restores all indices by default)
+        #[structopt(long)]
+        index_name: Option<stdx::NonHollowString>,
     },
 }
 
@@ -181,6 +222,43 @@ async fn main() -> Result<()> {
                 stats.total_indexed,
             );
         }
+        CliSubcommand::Snapshots(it) => match it {
+            Snapshots::RegisterRepo { path, repo_name } => {
+                vna_es::snapshots::register_repo(elastic, &path, &repo_name).await?;
+                eprintln!(
+                    "Registered snapshot repo '{}' under '{}'",
+                    repo_name,
+                    path.display()
+                );
+            }
+            Snapshots::Commit {
+                snapshot_name,
+                repo_name,
+            } => {
+                vna_es::snapshots::take_snapshot(elastic, &repo_name, &snapshot_name).await?;
+                eprintln!(
+                    "Created a snapshot {} in snapshot repo '{}'",
+                    snapshot_name, repo_name
+                );
+            }
+            Snapshots::RestoreFrom {
+                repo_name,
+                snapshot_name,
+                index_name,
+            } => {
+                vna_es::snapshots::restore_from_snapshot(
+                    elastic,
+                    &repo_name,
+                    &snapshot_name,
+                    &index_name,
+                )
+                .await?;
+                eprintln!(
+                    "Restored the state from the '{}' under '{}' repo",
+                    snapshot_name, repo_name
+                );
+            }
+        },
         CliSubcommand::Search { field_name, query } => {
             eprintln!("Searching for articles...");
 

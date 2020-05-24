@@ -1,6 +1,6 @@
 //! Various missing batteries for Rust
 
-use std::ops::Deref;
+use std::{fmt, ops::Deref};
 
 /// Struct that runs the specified closure in its [`Drop`](Drop) impl
 struct Guard<F: FnOnce()>(Option<F>);
@@ -28,10 +28,22 @@ pub fn debug_time_it(label: &'static str) -> impl Drop {
 #[derive(Debug)]
 pub struct NonHollowString(String);
 
+impl fmt::Display for NonHollowString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 impl Deref for NonHollowString {
     type Target = str;
     fn deref(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<NonHollowString> for String {
+    fn from(string: NonHollowString) -> Self {
+        string.0
     }
 }
 

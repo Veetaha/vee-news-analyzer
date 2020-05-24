@@ -3,7 +3,7 @@
 
 . .env
 
-ES_NODES="node_1 node_2 node_3 single_node"
+ES_NODES="node_1 node_2 node_3 single_node snapshots"
 
 for ES_NODE in $ES_NODES; do
     mkdir -p ${VNA_ES_DATA_PATH_ON_HOST}/${ES_NODE}
