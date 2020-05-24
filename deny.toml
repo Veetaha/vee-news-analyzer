@@ -5,7 +5,11 @@
 vulnerability = "deny"
 unmaintained = "deny"
 yanked = "deny"
-ignore = []
+ignore = [
+    # `net2` crate has been deprecated; use `socket2` instead
+    # FIXME: wait until the ecosystem drops `net2` and remove this ignore then
+    "RUSTSEC-2020-0016"
+]
 
 # The lint level for crates with security notices. Note that as of
 # 2019-12-17 there are no security notice advisories in
@@ -19,6 +23,18 @@ multiple-versions = "deny"
 skip = []
 # Skips the entire tree of the crate dependencies:
 skip-tree = [
+    # FIXME: remove duplicates
+    { version="*", name = "aho-corasick" },
+    { version="*", name = "itoa" },
+    { version="*", name = "lazy_static" },
+    { version="*", name = "miow" },
+    { version="*", name = "num-traits" },
+    { version="*", name = "regex" },
+    { version="*", name = "regex-syntax" },
+    { version="*", name = "serde" },
+    { version="*", name = "serde_json" },
+    { version="*", name = "thread_local" },
+    { version="*", name = "winapi" },
     # { name = "crate_name_here", version = "=0.11.0", depth = 20 },
 ]
 deny = [
@@ -49,7 +65,7 @@ copyleft = "deny"
 private = { ignore = true }
 
 # run `cargo deny list` to see which crates use which license
-allow = ["MIT", "Apache-2.0"]
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "Zlib"]
 deny = []
 default = "deny"
 allow-osi-fsf-free = "neither"

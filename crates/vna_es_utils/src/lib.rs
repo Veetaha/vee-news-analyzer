@@ -13,16 +13,18 @@ use elasticsearch::{
 use std::{future::Future, pin::Pin};
 use url::Url;
 
+type BoxedFuture<T> = Pin<Box<dyn Future<Output = T>>>;
+
 pub trait Success {
     type Ok;
     type Err;
-    fn success(self) -> Pin<Box<dyn Future<Output = Result<Self::Ok, Self::Err>>>>;
+    fn success(self) -> BoxedFuture<Result<Self::Ok, Self::Err>>;
 }
 
 impl Success for ElasticsearchResponse {
     type Ok = ();
     type Err = anyhow::Error;
-    fn success(self) -> Pin<Box<dyn Future<Output = Result<Self::Ok, Self::Err>>>> {
+    fn success(self) -> BoxedFuture<Result<Self::Ok, Self::Err>> {
         Box::pin(async move {
             let status_code = self.status_code();
             if !status_code.is_success() {

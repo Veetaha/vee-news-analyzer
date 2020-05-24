@@ -50,7 +50,7 @@ impl From<NonHollowString> for String {
 impl std::str::FromStr for NonHollowString {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Err("passed string is empty");
         }
         if s.chars().all(char::is_whitespace) {

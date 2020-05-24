@@ -3,7 +3,6 @@
 # vee-news-analyzer
 
 ![cicd](https://github.com/Veetaha/vee-news-analyzer/workflows/cicd/badge.svg)
-
 [![badge](https://img.shields.io/badge/docs-master-blue.svg)](https://veetaha.github.io/vee-news-analyzer/vna/)
 
 
