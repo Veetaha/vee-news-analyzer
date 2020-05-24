@@ -19,9 +19,12 @@ services:
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - path.repo=/mnt/snapshots
 
     ports: ["${VNA_ES_PORT}:9200"]
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_1:/usr/share/elasticsearch/data:rw"]
+    volumes:
+      - "${VNA_ES_DATA_PATH_ON_HOST}/node_1:/usr/share/elasticsearch/data:rw"
+      - "${VNA_ES_DATA_PATH_ON_HOST}/snapshots:/mnt/snapshots:rw"
 
     image: ${VNA_ES_IMAGE}
     ulimits: { memlock: { soft: -1, hard: -1 } }
@@ -37,8 +40,11 @@ services:
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - path.repo=/mnt/snapshots
 
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_2:/usr/share/elasticsearch/data:rw"]
+    volumes:
+      - "${VNA_ES_DATA_PATH_ON_HOST}/node_2:/usr/share/elasticsearch/data:rw"
+      - "${VNA_ES_DATA_PATH_ON_HOST}/snapshots:/mnt/snapshots:rw"
 
     image: ${VNA_ES_IMAGE}
     ulimits: { memlock: { soft: -1, hard: -1 } }
@@ -54,8 +60,11 @@ services:
       - cluster.initial_master_nodes=es01,es02,es03
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - path.repo=/mnt/snapshots
 
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_3:/usr/share/elasticsearch/data:rw"]
+    volumes:
+      - "${VNA_ES_DATA_PATH_ON_HOST}/node_3:/usr/share/elasticsearch/data:rw"
+      - "${VNA_ES_DATA_PATH_ON_HOST}/snapshots:/mnt/snapshots:rw"
 
     image: ${VNA_ES_IMAGE}
     ulimits: { memlock: { soft: -1, hard: -1 } }

@@ -12,7 +12,7 @@ This is my university course work for database classes.
 The project uses [Kaggle news dataset](kaggle-dataset).
 
 The core of the project is `vna` cli.
-It reads the provided **`200K+`** articles from the data source and puts them into [`Elasticsearch`](https://github.com/elastic/elasticsearch) cluster while analyzing
+It reads the provided **`~200K`** articles from the data source and puts them into [`Elasticsearch`](https://github.com/elastic/elasticsearch) cluster while analyzing
 the obtained textual information sentiment.
 The ingest process is implemented by `vna_data_sync` component.
 After this process is done you can use `vna` cli to do fulltext search,
@@ -81,4 +81,38 @@ points to it).
 
 ```bash
 cargo run [--release] -p vna -- data-sync
+```
+
+When run in release mode and with the single-node Elasticsearch cluster `data-sync` process
+takes approx. `50 seconds` for `~200K` documents on my laptop
+- `Lenovo 520`
+- `Intel Core i7-8550U CPU @ 1.80GHz × 8`
+- `8GB RAM`
+
+View the help info via
+```
+vna [[--]help] [subcommand]
+```
+
+At the time of writing this it looks like this:
+
+```
+vee-news-analyzer 0.1.0
+
+USAGE:
+    vna --es-url <es-url> <SUBCOMMAND>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+        --es-url <es-url>    Elasticsearch endpoint url to use [env: VNA_ES_URL=http://127.0.0.1:9200]
+
+SUBCOMMANDS:
+    data-sync    Run data synchronization job that will use the external data source
+    help         Prints this message or the help of the given subcommand(s)
+    search       Issue a fulltext search thru all the news
+    snapshots    Elasticsearch snapshots management commands
+    stats        View varios statistics about the news via SVG charts
 ```
