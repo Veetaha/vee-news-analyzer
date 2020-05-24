@@ -1,8 +1,7 @@
 //! vee-news-analyzer cli entrypoint
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use charts::{Chart, ScaleBand, ScaleLinear, VerticalBarView};
-use itertools::Itertools;
 use std::{
     num::NonZeroU32,
     ops::Deref,
@@ -30,7 +29,7 @@ enum CliArgs {
         max_news: u64,
 
         /// Maximum size of the batch to ingest data with into Elasticsearch
-        #[structopt(long, default_value = "80000")]
+        #[structopt(long, default_value = "50000")]
         ingest_batch: NonZeroU32,
 
         /// Number of shards to use for the Elasticsearch indices (min: 1)
@@ -52,6 +51,7 @@ enum CliArgs {
         data_source: DataSourceArgs,
     },
 
+    /// View varios statistics about the news via SVG charts
     Stats {
         #[structopt(flatten)]
         kind: StatsKind,
@@ -60,6 +60,7 @@ enum CliArgs {
         elasticsearch: ElasticsearchArgs,
     },
 
+    /// Issue a fulltext search thru all the news
     Search {
         /// String of text to search for in Elasticsearch
         query: stdx::NonHollowString,
@@ -77,7 +78,9 @@ enum CliArgs {
 
 #[derive(Debug, StructOpt)]
 enum StatsKind {
+    /// Display significant words statistics for a particular query
     SignificantWords {
+        /// Query that will be used as a root to find related significant words for
         query: stdx::NonHollowString,
 
         /// Particular name of the field to search by in elasticsearch.
@@ -199,12 +202,17 @@ async fn main() -> Result<()> {
 
                 let chart_path = Path::new("./significant_words.svg");
 
-                eprintln!("Total docs: {} in {:?}", result.doc_count, time.elapsed());
+                eprintln!(
+                    "Total docs: {} in {:?}, words: {}",
+                    result.doc_count,
+                    time.elapsed(),
+                    result.buckets.len()
+                );
 
                 if result.buckets.len() > 0 {
                     create_significant_words_chart(&result.buckets, &query, chart_path)?;
 
-                    std::process::Command::new("xdg-open")
+                    std::process::Command::new("google-chrome")
                         .arg(chart_path)
                         .spawn()?
                         .wait()?;
@@ -221,9 +229,9 @@ fn create_significant_words_chart(
     query: &stdx::NonHollowString,
     file_path: &Path,
 ) -> Result<()> {
-    let width = 800;
-    let height = 600;
-    let (top, right, bottom, left) = (90, 40, 50, 60);
+    let width = 1500;
+    let height = 900;
+    let (top, right, bottom, left) = (90, 40, 200, 60);
 
     let x = ScaleBand::new()
         .set_domain(words.iter().map(|it| it.key.clone()).collect())
@@ -231,14 +239,10 @@ fn create_significant_words_chart(
         .set_inner_padding(0.1)
         .set_outer_padding(0.1);
 
-    let (min, max) = match words.iter().map(|it| it.doc_count).minmax() {
-        itertools::MinMaxResult::NoElements => return Ok(()),
-        itertools::MinMaxResult::OneElement(it) => (it, it),
-        itertools::MinMaxResult::MinMax(min, max) => (min, max),
-    };
+    let max = words.iter().map(|it| it.doc_count).max().unwrap();
 
     let y = ScaleLinear::new()
-        .set_domain(vec![min as f32, max as f32])
+        .set_domain(vec![0.0, max as f32])
         .set_range(vec![height - top - bottom, 0]);
 
     // You can use your own iterable as data as long as its items implement the `BarDatum` trait.
@@ -251,8 +255,9 @@ fn create_significant_words_chart(
     let view = VerticalBarView::new()
         .set_x_scale(&x)
         .set_y_scale(&y)
+        .set_colors(charts::Color::color_scheme_dark())
         .load_data(&data)
-        .map_err(|err| anyhow::anyhow!("{}", err))?;
+        .map_err(|err| anyhow!("{}", err))?;
 
     // Generate and save the chart.
     Chart::new()
@@ -263,10 +268,10 @@ fn create_significant_words_chart(
         .add_view(&view)
         .add_axis_bottom(&x)
         .add_axis_left(&y)
-        .add_left_axis_label("Total documents with the word")
+        .add_left_axis_label("Total news with the word")
         .add_bottom_axis_label("Significant words")
         .save(file_path)
-        .map_err(|err| anyhow::anyhow!("{}", err))?;
+        .map_err(|err| anyhow!("{}", err))?;
 
     Ok(())
 }

@@ -29,6 +29,14 @@ pub struct Article {
     pub link: String,
     pub short_description: String,
     pub date: String,
+    pub sentiment_score: f32,
+    pub sentiment_polarity: SentimentPolarity,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SentimentPolarity {
+    Positive,
+    Negative,
 }
 
 impl Article {
@@ -69,6 +77,14 @@ impl Article {
                         "type": "date",
                         "index": true,
                     },
+                    "sentiment_score": {
+                        "type": "float",
+                        "index": false,
+                    },
+                    "sentiment_polarity": {
+                        "type": "keyword",
+                        "index": true,
+                    }
                 }
             },
         })
