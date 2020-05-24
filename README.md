@@ -9,7 +9,7 @@
 
 This is my university course work for database classes.
 
-The project uses [Kaggle news dataset](kaggle-dataset).
+The project uses [Kaggle news dataset][kaggle-dataset].
 
 The core of the project is `vna` cli.
 It reads the provided **`~200K`** articles from the data source and puts them into [`Elasticsearch`](https://github.com/elastic/elasticsearch) cluster while analyzing
@@ -75,7 +75,7 @@ cargo build
 cargo build --release
 ```
 
-Build and run the cli ingest process. Be sure to put the [kaggle dataset](kaggle-dataset)
+Build and run the cli ingest process. Be sure to put the [kaggle dataset][kaggle-dataset]
 at `./datasets/kaggle/news_v2.json` or anywhere else (just make sure that `--kaggle-path`
 points to it).
 
