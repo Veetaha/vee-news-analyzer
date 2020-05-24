@@ -1,9 +1,16 @@
 //! vee-news-analyzer cli entrypoint
 
 use anyhow::Result;
-use std::num::NonZeroU32;
+use charts::{Chart, ScaleBand, ScaleLinear, VerticalBarView};
+use itertools::Itertools;
+use std::{
+    num::NonZeroU32,
+    ops::Deref,
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
 use url::Url;
+use vna_es_utils::es_types;
 
 #[structopt(name = "vee-news-analyzer")]
 #[derive(Debug, StructOpt)]
@@ -18,9 +25,13 @@ enum CliArgs {
         #[structopt(long)]
         scrape_interval: Option<u32>,
 
-        /// Maximum amount of news to retain in Elasticsearch database.
-        #[structopt(long, default_value = "100")]
+        /// Maximum amount of news to retain in Elasticsearch database
+        #[structopt(long, default_value = "300000")]
         max_news: u64,
+
+        /// Maximum size of the batch to ingest data with into Elasticsearch
+        #[structopt(long, default_value = "80000")]
+        ingest_batch: NonZeroU32,
 
         /// Number of shards to use for the Elasticsearch indices (min: 1)
         #[structopt(long, default_value = "1")]
@@ -30,11 +41,15 @@ enum CliArgs {
         #[structopt(long, default_value = "0")]
         n_replicas: u32,
 
+        /// Whether to delete old index once the new one is created,
+        #[structopt(long)]
+        leave_old_index: bool,
+
         #[structopt(flatten)]
         elasticsearch: ElasticsearchArgs,
 
         #[structopt(flatten)]
-        news_api: NewsApiArgs,
+        data_source: DataSourceArgs,
     },
 
     Stats {
@@ -44,16 +59,41 @@ enum CliArgs {
         #[structopt(flatten)]
         elasticsearch: ElasticsearchArgs,
     },
+
+    Search {
+        /// String of text to search for in Elasticsearch
+        query: stdx::NonHollowString,
+
+        /// Particular name of the field to search by in elasticsearch.
+        /// If none is specified (which is the default) searches by all
+        /// text fields
+        #[structopt(long)]
+        field_name: Option<String>,
+
+        #[structopt(flatten)]
+        elasticsearch: ElasticsearchArgs,
+    },
 }
+
 #[derive(Debug, StructOpt)]
 enum StatsKind {
-    // /// Display news trends graphs
-// Trends,
+    SignificantWords {
+        query: stdx::NonHollowString,
 
-// /// Display news sentiment analyzis statistics
-// Sentiment {
-//     news_id: String,
-// }
+        /// Particular name of the field to search by in elasticsearch.
+        #[structopt(long, default_value = "short_description")]
+        field_name: String,
+
+        /// Maximym number of significant words to return
+        #[structopt(long, default_value = "15")]
+        max_words: u32,
+    }, // /// Display news trends graphs
+       // Trends,
+
+       // /// Display news sentiment analyzis statistics
+       // Sentiment {
+       //     news_id: String,
+       // }
 }
 
 #[derive(Debug, StructOpt)]
@@ -64,10 +104,10 @@ struct ElasticsearchArgs {
 }
 
 #[derive(Debug, StructOpt)]
-struct NewsApiArgs {
-    /// Api key obtained from https://newsapi.org
-    #[structopt(long, env = "VNA_NEWS_API_KEY")]
-    news_api_key: String,
+struct DataSourceArgs {
+    /// Path to kaggle news dataset
+    #[structopt(long, env = "VNA_KAGGLE_PATH")]
+    kaggle_path: PathBuf,
 }
 
 #[tokio::main]
@@ -87,37 +127,146 @@ async fn main() -> Result<()> {
             max_news,
             scrape_interval,
             elasticsearch,
-            news_api,
+            data_source,
             n_replicas,
             n_shards,
+            ingest_batch,
+            leave_old_index,
         } => {
             eprintln!("Running data sync task...");
             let time = std::time::Instant::now();
             let stats = vna_data_sync::run(vna_data_sync::RunOpts {
                 es_url: elasticsearch.es_url,
-                news_api_key: news_api.news_api_key,
+                kaggle_dataset_path: &data_source.kaggle_path,
                 scrape_interval,
                 max_news,
                 n_replicas,
                 n_shards,
+                ingest_batch,
+                leave_old_index,
             })
             .await?;
             eprintln!(
                 "Data sync task has finished\n\
                 took: {:?},\n\
                 new_index_name: {},\n\
-                total_processed: {},\n\
                 total_indexed: {}\n",
                 time.elapsed(),
                 stats.new_index_name,
-                stats.total_processed,
                 stats.total_indexed,
             );
         }
-        CliArgs::Stats { .. } => {
-            todo!();
+        CliArgs::Search {
+            field_name,
+            query,
+            elasticsearch,
+        } => {
+            eprintln!("Searching for articles...");
+
+            let elastic = &vna_es_utils::create_elasticsearch_client(elasticsearch.es_url)?;
+
+            let articles = vna_es::Article::fulltext_search(vna_es::FulltextSearchOpts {
+                elastic,
+                field_name: field_name.as_deref(),
+                query: &query,
+            })
+            .await?;
+
+            eprintln!("Found articles {}", articles.len());
+            for article in articles {
+                eprintln!("{:#?}", article);
+            }
         }
+        CliArgs::Stats {
+            kind,
+            elasticsearch,
+        } => match kind {
+            StatsKind::SignificantWords {
+                query,
+                max_words,
+                field_name,
+            } => {
+                let elastic = &vna_es_utils::create_elasticsearch_client(elasticsearch.es_url)?;
+                let time = std::time::Instant::now();
+                let result: es_types::SignificantTextAggr =
+                    vna_es::Article::significant_words(vna_es::SignificantWordsOpts {
+                        elastic,
+                        field_name: &field_name,
+                        query: &query,
+                        max_words,
+                    })
+                    .await?;
+
+                let chart_path = Path::new("./significant_words.svg");
+
+                eprintln!("Total docs: {} in {:?}", result.doc_count, time.elapsed());
+
+                if result.buckets.len() > 0 {
+                    create_significant_words_chart(&result.buckets, &query, chart_path)?;
+
+                    std::process::Command::new("xdg-open")
+                        .arg(chart_path)
+                        .spawn()?
+                        .wait()?;
+                }
+            }
+        },
     }
+
+    Ok(())
+}
+
+fn create_significant_words_chart(
+    words: &[es_types::SignificantTextAggrBucket],
+    query: &stdx::NonHollowString,
+    file_path: &Path,
+) -> Result<()> {
+    let width = 800;
+    let height = 600;
+    let (top, right, bottom, left) = (90, 40, 50, 60);
+
+    let x = ScaleBand::new()
+        .set_domain(words.iter().map(|it| it.key.clone()).collect())
+        .set_range(vec![0, width - left - right])
+        .set_inner_padding(0.1)
+        .set_outer_padding(0.1);
+
+    let (min, max) = match words.iter().map(|it| it.doc_count).minmax() {
+        itertools::MinMaxResult::NoElements => return Ok(()),
+        itertools::MinMaxResult::OneElement(it) => (it, it),
+        itertools::MinMaxResult::MinMax(min, max) => (min, max),
+    };
+
+    let y = ScaleLinear::new()
+        .set_domain(vec![min as f32, max as f32])
+        .set_range(vec![height - top - bottom, 0]);
+
+    // You can use your own iterable as data as long as its items implement the `BarDatum` trait.
+    let data = words
+        .iter()
+        .map(|it| (it.key.as_str(), it.doc_count as f32))
+        .collect();
+
+    // Create VerticalBar view that is going to represent the data as vertical bars.
+    let view = VerticalBarView::new()
+        .set_x_scale(&x)
+        .set_y_scale(&y)
+        .load_data(&data)
+        .map_err(|err| anyhow::anyhow!("{}", err))?;
+
+    // Generate and save the chart.
+    Chart::new()
+        .set_width(width)
+        .set_height(height)
+        .set_margins(top, right, bottom, left)
+        .add_title(format!("Significant words ({})", query.deref()))
+        .add_view(&view)
+        .add_axis_bottom(&x)
+        .add_axis_left(&y)
+        .add_left_axis_label("Total documents with the word")
+        .add_bottom_axis_label("Significant words")
+        .save(file_path)
+        .map_err(|err| anyhow::anyhow!("{}", err))?;
 
     Ok(())
 }
