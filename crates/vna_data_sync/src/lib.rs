@@ -1,14 +1,13 @@
 use anyhow::Result;
-use elasticsearch::params::Refresh;
+use elasticsearch::{params::Refresh, Elasticsearch};
 use itertools::Itertools;
 use std::{iter, num::NonZeroU32, path::Path, time::Duration};
-use url::Url;
 use vna_es;
 
 mod data_source;
 
 pub struct RunOpts<'a> {
-    pub es_url: Url,
+    pub elastic: &'a Elasticsearch,
     pub kaggle_dataset_path: &'a Path,
     pub scrape_interval: Option<u32>,
     pub max_news: u64,
@@ -26,7 +25,7 @@ pub struct Stats {
 
 pub async fn run(
     RunOpts {
-        es_url,
+        elastic,
         max_news,
         n_replicas,
         n_shards,
@@ -36,7 +35,6 @@ pub async fn run(
         leave_old_index,
     }: RunOpts<'_>,
 ) -> Result<Stats> {
-    let elastic = &vna_es_utils::create_elasticsearch_client(es_url)?;
     let n_cpus = num_cpus::get();
 
     let scrape = || async {

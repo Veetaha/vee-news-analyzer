@@ -222,10 +222,16 @@ impl Article {
     pub async fn significant_words(
         opts: SignificantWordsOpts<'_>,
     ) -> Result<es_types::SignificantTextAggr> {
-        let response: es_types::SignificantTextSearch = opts
+        #[derive(Deserialize)]
+        pub struct Aggrs {
+            pub keywords: es_types::SignificantTextAggr,
+        }
+
+        let response: es_types::AggrsResponse<Aggrs> = opts
             .elastic
             .search(SearchParts::Index(&[Self::INDEX_ALIAS]))
             .body(json!({
+                // Don't return the document hits array, only the aggregration info
                 "size": 0,
                 "query": {
                     "match": { opts.field_name: opts.query.deref() }
@@ -246,6 +252,63 @@ impl Article {
 
         Ok(response.aggregations.keywords)
     }
+
+    pub async fn sentiment_stats(opts: StatsOpts<'_>) -> Result<Stats> {
+        Self::fetch_stats(opts, "sentiment_polarity").await
+    }
+
+    pub async fn category_stats(opts: StatsOpts<'_>) -> Result<Stats> {
+        Self::fetch_stats(opts, "category").await
+    }
+
+    async fn fetch_stats(opts: StatsOpts<'_>, aggr_field: &str) -> Result<Stats> {
+        #[derive(Deserialize)]
+        pub struct Aggrs {
+            pub aggr: es_types::TermsAggr,
+        }
+
+        let query = match opts.query {
+            Some(query) => json!({ "match": { opts.field_name: query.deref() } }),
+            None => json!({ "match_all": {} }),
+        };
+
+        let result: es_types::AggrsResponse<Aggrs> = opts
+            .elastic
+            .search(SearchParts::Index(&[Self::INDEX_ALIAS]))
+            .body(json!({
+                // Don't return the document hits array, only the aggregration info
+                "size": 0,
+                "query": query,
+                "aggs": {
+                    "aggr": {
+                        "terms": {
+                            "field": aggr_field,
+                        }
+                    }
+                }
+            }))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        let buckets = result.aggregations.aggr.buckets;
+
+        let stats = buckets
+            .into_iter()
+            .map(|it| (it.key, it.doc_count))
+            .collect();
+
+        Ok(Stats(stats))
+    }
+}
+
+pub struct Stats(pub Vec<(String, u64)>);
+
+pub struct StatsOpts<'a> {
+    pub elastic: &'a Elasticsearch,
+    pub query: &'a Option<stdx::NonHollowString>,
+    pub field_name: &'a str,
 }
 
 pub struct SignificantWordsOpts<'a> {
