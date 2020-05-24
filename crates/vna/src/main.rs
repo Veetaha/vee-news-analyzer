@@ -298,7 +298,7 @@ async fn main() -> Result<()> {
                     result.buckets.len()
                 );
 
-                if result.buckets.len() > 0 {
+                if !result.buckets.is_empty() {
                     create_significant_words_chart(&result.buckets, &query, &chart_path)?;
                     open_svg_in_google_chrome(&chart_path)?;
                 }
@@ -349,7 +349,7 @@ fn create_category_analysis_chart(
     create_chart(ChartOpts {
         title: match query {
             Some(it) => format!("Categories stats ({})", it.deref()),
-            None => format!("Categories stats"),
+            None => "Categories stats".to_owned(),
         },
         left_axis_label: "Total news with the category",
         bottom_axis_label: "Categories",
@@ -367,7 +367,7 @@ fn create_sentiment_analysis_chart(
     create_chart(ChartOpts {
         title: match query {
             Some(it) => format!("Sentiments stats ({})", it.deref()),
-            None => format!("Sentiments stats"),
+            None => "Sentiments stats".to_owned(),
         },
         left_axis_label: "Total news with the sentiment",
         bottom_axis_label: "Sentiments",
@@ -430,7 +430,7 @@ fn create_chart(opts: ChartOpts<'_>) -> Result<()> {
     let (top, right, bottom, left) = (90, 40, 200, 60);
 
     let x = ScaleBand::new()
-        .set_domain(opts.data.iter().map(|(cat, _)| cat.to_string()).collect())
+        .set_domain(opts.data.iter().map(|(cat, _)| (*cat).to_owned()).collect())
         .set_range(vec![0, width - left - right])
         .set_inner_padding(0.1)
         .set_outer_padding(0.1);

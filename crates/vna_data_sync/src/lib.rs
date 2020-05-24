@@ -2,7 +2,6 @@ use anyhow::Result;
 use elasticsearch::{params::Refresh, Elasticsearch};
 use itertools::Itertools;
 use std::{iter, num::NonZeroU32, path::Path, time::Duration};
-use vna_es;
 
 mod data_source;
 
@@ -68,17 +67,13 @@ pub async fn run(
                 let max_take = (max_news - stats.total_indexed) as usize;
 
                 let per_thread_chunks = batch
-                    .into_iter()
                     .take(max_take)
                     .chunks(ingest_batch.get() as usize / n_cpus);
 
                 let tasks = per_thread_chunks.into_iter().map(|per_thread_batch| {
-                    let docs: Vec<_> = per_thread_batch.into_iter().collect();
+                    let docs: Vec<_> = per_thread_batch.collect();
 
                     tokio::task::spawn_blocking(move || {
-                        // log::debug!("per thread batch: {}", docs.len());
-                        // let _ta = stdx::debug_time_it("thread analyzing the batch");
-
                         docs.into_iter()
                             .map(kaggle_article_to_es_document)
                             .collect::<Vec<_>>()
@@ -105,7 +100,7 @@ pub async fn run(
 
             stats.total_indexed += n_bulk_docs as u64; // FIXME: be more pessimistic (check response)
 
-            if bulk_body.len() != 0 {
+            if !bulk_body.is_empty() {
                 elastic
                     .bulk(elasticsearch::BulkParts::Index(&stats.new_index_name))
                     .body(bulk_body)
@@ -145,9 +140,10 @@ pub async fn run(
 fn kaggle_article_to_es_document(article: data_source::kaggle::Article) -> vna_es::Article {
     let sent = sentiment::analyze(article.short_description.clone());
 
-    let (score, polarity) = match sent.negative.score > sent.positive.score {
-        true => (sent.negative.score, vna_es::SentimentPolarity::Negative),
-        false => (sent.positive.score, vna_es::SentimentPolarity::Positive),
+    let (score, polarity) = if sent.negative.score > sent.positive.score {
+        (sent.negative.score, vna_es::SentimentPolarity::Negative)
+    } else {
+        (sent.positive.score, vna_es::SentimentPolarity::Positive)
     };
 
     vna_es::Article {
