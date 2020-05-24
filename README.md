@@ -1,6 +1,6 @@
 [kaggle-dataset]: https://www.kaggle.com/rmisra/news-category-dataset
 
-# news-analyzer
+# vee-news-analyzer
 
 ![cicd](https://github.com/Veetaha/vee-news-analyzer/workflows/cicd/badge.svg)
 
