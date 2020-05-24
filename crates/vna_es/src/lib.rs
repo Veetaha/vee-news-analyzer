@@ -4,31 +4,31 @@ use anyhow::{Context, Result};
 use elasticsearch::{
     http::response::Response as ElasticsearchResponse,
     indices::{IndicesCreateParts, IndicesDeleteParts, IndicesGetAliasParts},
-    Elasticsearch,
+    Elasticsearch, SearchParts,
 };
 pub use index_version::IndexVersion;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::num::NonZeroU32;
+use std::ops::Deref;
 use vna_es_utils::{es_types, Success};
 
+#[derive(Debug)]
 pub struct WithId<T> {
     pub id: String,
     pub doc: T,
 }
 
 /// Main document type which is stored in Elasticsearch
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Article {
-    pub source_name: String,
-    pub author: String,
-    pub title: String,
-    pub description: String,
-    pub url: String,
-    pub url_to_image: String,
-    pub published_at: String,
-    pub content: String,
+    pub category: String,
+    pub headline: String,
+    pub authors: String,
+    pub link: String,
+    pub short_description: String,
+    pub date: String,
 }
 
 impl Article {
@@ -45,36 +45,28 @@ impl Article {
             },
             "mappings": {
                 "properties": {
-                    "source_name": {
-                        "type": "text",
-                        "index": true,
-                    },
-                    "author": {
-                        "type": "text",
-                        "index": true,
-                    },
-                    "title": {
-                        "type": "text",
-                        "index": true,
-                    },
-                    "description": {
-                        "type": "text",
-                        "index": true,
-                    },
-                    "url": {
+                    "category": {
                         "type": "keyword",
                         "index": true,
                     },
-                    "url_to_image": {
+                    "headline": {
+                        "type": "text",
+                        "index": true,
+                    },
+                    "authors": {
+                        "type": "text",
+                        "index": true,
+                    },
+                    "link": {
                         "type": "keyword",
                         "index": true,
                     },
-                    "published_at": {
+                    "short_description": {
+                        "type": "text",
+                        "index": true,
+                    },
+                    "date": {
                         "type": "date",
-                        "index": true,
-                    },
-                    "content": {
-                        "type": "text",
                         "index": true,
                     },
                 }
@@ -175,6 +167,82 @@ impl Article {
                 .unwrap_or_else(|| panic!("Invalid index name: {}", &index_name)),
         ))
     }
+
+    pub async fn fulltext_search(opts: FulltextSearchOpts<'_>) -> Result<Vec<WithId<Article>>> {
+        let query = match opts.field_name {
+            None => json!({
+                "multi_match": {
+                    "query": opts.query.deref(),
+                    "fields": [
+                        "headline^2",
+                        "authors",
+                        "short_description",
+                    ]
+                }
+            }),
+            Some(field_name) => json!({ "match": { field_name: opts.query.deref() } }),
+        };
+
+        let response: es_types::SearchResponse<Article> = opts
+            .elastic
+            .search(SearchParts::Index(&[Self::INDEX_ALIAS]))
+            .body(json!({ "query": { "bool": { "should": [query] } } }))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(response
+            .hits
+            .hits
+            .into_iter()
+            .map(|it| WithId {
+                id: it._id,
+                doc: it._source,
+            })
+            .collect())
+    }
+
+    pub async fn significant_words(
+        opts: SignificantWordsOpts<'_>,
+    ) -> Result<es_types::SignificantTextAggr> {
+        let response: es_types::SignificantTextSearch = opts
+            .elastic
+            .search(SearchParts::Index(&[Self::INDEX_ALIAS]))
+            .body(json!({
+                "size": 0,
+                "query": {
+                    "match": { opts.field_name: opts.query.deref() }
+                },
+                "aggs": {
+                    "keywords": {
+                        "significant_text": {
+                            "field": opts.field_name,
+                            "size": opts.max_words,
+                        }
+                    }
+                }
+            }))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(response.aggregations.keywords)
+    }
+}
+
+pub struct SignificantWordsOpts<'a> {
+    pub elastic: &'a Elasticsearch,
+    pub query: &'a stdx::NonHollowString,
+    pub field_name: &'a str,
+    pub max_words: u32,
+}
+
+pub struct FulltextSearchOpts<'a> {
+    pub elastic: &'a Elasticsearch,
+    pub query: &'a stdx::NonHollowString,
+    pub field_name: Option<&'a str>,
 }
 
 pub struct CreateArticlesIndexOpts<'a> {

@@ -17,10 +17,7 @@ serde_json = "1.0"
 url = "2.1"
 itertools = "0.9"
 
-# FIXME: migrate to async api impl
-# we are pretty tighted to newsapi, importing it here won't bee much of a bad code...
-newsapi = "0.3.1"
-
+stdx = { path = "../stdx" }
 vna_es_utils = { path = "../vna_es_utils" }
 
 [dev-dependencies]

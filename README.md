@@ -25,10 +25,3 @@ You should create it similar to the provided `EXAMPLE.env` template.
 
 
 // FIXME: add cli bootstrap guide once it is formed.
-
-# Attribution
-<!--
-This attribution notice is required by newsapi.org for applications that
-use the free plan.
--->
-Powered by https://newsapi.org.
