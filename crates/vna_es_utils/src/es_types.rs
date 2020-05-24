@@ -46,12 +46,8 @@ pub struct SearchResponse<Entity> {
 }
 
 #[derive(Deserialize)]
-pub struct SignificantTextSearch {
-    pub aggregations: SignificantTextAggrs,
-}
-#[derive(Deserialize)]
-pub struct SignificantTextAggrs {
-    pub keywords: SignificantTextAggr,
+pub struct AggrsResponse<Aggrs> {
+    pub aggregations: Aggrs,
 }
 
 #[derive(Deserialize)]
@@ -67,4 +63,17 @@ pub struct SignificantTextAggrBucket {
     pub doc_count: u64,
     pub score: f64,
     pub bg_count: u64,
+}
+
+#[derive(Deserialize)]
+pub struct TermsAggr {
+    pub doc_count_error_upper_bound: u64,
+    pub sum_other_doc_count: u64,
+    pub buckets: Vec<TermsAggrBucket>,
+}
+
+#[derive(Deserialize)]
+pub struct TermsAggrBucket {
+    pub key: String,
+    pub doc_count: u64,
 }

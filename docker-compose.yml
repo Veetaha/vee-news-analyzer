@@ -20,7 +20,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
     ports: ["${VNA_ES_PORT}:9200"]
-    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/node_1:/usr/share/elasticsearch/data:rw"]
+    volumes: ["${VNA_ES_DATA_PATH_ON_HOST}/single_node:/usr/share/elasticsearch/data:rw"]
 
     image: ${VNA_ES_IMAGE}
     ulimits: { memlock: { soft: -1, hard: -1 } }
