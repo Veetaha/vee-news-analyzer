@@ -1,3 +1,5 @@
+[kaggle-dataset]: https://www.kaggle.com/rmisra/news-category-dataset
+
 # news-analyzer
 
 ![cicd](https://github.com/Veetaha/vee-news-analyzer/workflows/cicd/badge.svg)
@@ -7,7 +9,7 @@
 
 This is my university course work for database classes.
 
-The project uses [Kaggle news dataset](https://www.kaggle.com/rmisra/news-category-dataset).
+The project uses [Kaggle news dataset](kaggle-dataset).
 
 The core of the project is `vna` cli.
 It reads the provided **`200K+`** articles from the data source and puts them into thes [`Elasticsearch`](https://github.com/elastic/elasticsearch) cluster while analyzing
@@ -31,14 +33,31 @@ vna significant-words study
 
 # Bootstrap
 
-Deploy local `Elasticsearch` cluster of 3 data nodes on your local machine, also
+## Elasticsearch and Kibana
+
+Deploy local `Elasticsearch` cluster on your local machine, also
 spin up a `Kibana` instance with auth-less access to that cluster.
-```
+```bash
+# Deploy 3-data-nodes cluster
+docker-compose -f docker-compose-multi-node.yml up
+# Deploy single-node cluster (best for development, otherwise Java will eat your RAM)
 docker-compose up
 ```
-The configuration tweaks for this is available in `.env` file.
+The configuration tweaks for the setup are available in `.env` file.
 You should create it similar to the provided `EXAMPLE.env` template.
 
+## Cli
 
+Build the cli. The self-contained executable will be avaialbe at `./target/debug/vna`
 
-// FIXME: add cli bootstrap guide once it is formed.
+```bash
+cargo build
+```
+
+Build and run the cli ingest process. Be sure to put the [kaggle dataset](kaggle-dataset)
+at `./datasets/kaggle/news_v2.json` or anywhere else (just make sure that `--kaggle-path`
+points to it).
+
+```bash
+cargo run -p vna -- data-sync
+```
