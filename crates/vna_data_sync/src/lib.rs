@@ -37,6 +37,7 @@ pub async fn run(
     }: RunOpts<'_>,
 ) -> Result<Stats> {
     let elastic = &vna_es_utils::create_elasticsearch_client(es_url)?;
+    let n_cpus = num_cpus::get();
 
     let scrape = || async {
         let _t = stdx::debug_time_it("Scraping datasources");
@@ -62,19 +63,43 @@ pub async fn run(
             .chunks(ingest_batch.get() as usize);
 
         for batch in &articles {
-            let _t = stdx::debug_time_it("Ingesting a batch");
+            let _ti = stdx::debug_time_it("Ingesting a batch");
 
-            let bulk_body: Vec<_> = batch
-                .into_iter()
-                .map_into::<vna_es::Article>()
-                .take((max_news - stats.total_indexed) as usize)
-                .map(|doc| {
-                    let header = "{\"index\":{}}".to_owned();
-                    let doc = serde_json::to_string(&doc).unwrap();
-                    iter::once(header).chain(iter::once(doc))
-                })
-                .flatten()
-                .collect();
+            let bulk_body: Vec<_> = {
+                let _ta = stdx::debug_time_it("Analyzing batch");
+                let max_take = (max_news - stats.total_indexed) as usize;
+
+                let per_thread_chunks = batch
+                    .into_iter()
+                    .take(max_take)
+                    .chunks(ingest_batch.get() as usize / n_cpus);
+
+                let tasks = per_thread_chunks.into_iter().map(|per_thread_batch| {
+                    let docs: Vec<_> = per_thread_batch.into_iter().collect();
+
+                    tokio::task::spawn_blocking(move || {
+                        // log::debug!("per thread batch: {}", docs.len());
+                        // let _ta = stdx::debug_time_it("thread analyzing the batch");
+
+                        docs.into_iter()
+                            .map(kaggle_article_to_es_document)
+                            .collect::<Vec<_>>()
+                    })
+                });
+
+                futures::future::join_all(tasks)
+                    .await
+                    .into_iter()
+                    .map(Result::unwrap)
+                    .flatten()
+                    .map(|doc| {
+                        let header = "{\"index\":{}}".to_owned();
+                        let doc = serde_json::to_string(&doc).unwrap();
+                        iter::once(header).chain(iter::once(doc))
+                    })
+                    .flatten()
+                    .collect()
+            };
 
             let n_bulk_docs = bulk_body.len() / 2;
 
@@ -116,5 +141,25 @@ pub async fn run(
     loop {
         scrape().await?;
         std::thread::sleep(scrape_interval);
+    }
+}
+
+fn kaggle_article_to_es_document(article: data_source::kaggle::Article) -> vna_es::Article {
+    let sent = sentiment::analyze(article.short_description.clone());
+
+    let (score, polarity) = match sent.negative.score > sent.positive.score {
+        true => (sent.negative.score, vna_es::SentimentPolarity::Negative),
+        false => (sent.positive.score, vna_es::SentimentPolarity::Positive),
+    };
+
+    vna_es::Article {
+        category: article.category,
+        headline: article.headline,
+        authors: article.authors,
+        link: article.link,
+        short_description: article.short_description,
+        date: article.date,
+        sentiment_score: score,
+        sentiment_polarity: polarity,
     }
 }

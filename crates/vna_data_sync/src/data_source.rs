@@ -11,30 +11,17 @@ pub mod kaggle {
     #[derive(Deserialize)]
     pub struct Article {
         /// Category article belongs to
-        category: String,
+        pub category: String,
         /// Headline of the article
-        headline: String,
+        pub headline: String,
         /// Person authored the article
-        authors: String,
+        pub authors: String,
         /// Link to the post
-        link: String,
+        pub link: String,
         /// Short description of the article
-        short_description: String,
+        pub short_description: String,
         /// Date the article was published
-        date: String,
-    }
-
-    impl From<Article> for vna_es::Article {
-        fn from(data_source: Article) -> vna_es::Article {
-            vna_es::Article {
-                category: data_source.category,
-                headline: data_source.headline,
-                authors: data_source.authors,
-                link: data_source.link,
-                short_description: data_source.short_description,
-                date: data_source.date,
-            }
-        }
+        pub date: String,
     }
 
     /// Returns an iterator thru all the articles at the specified `dataset_path`
