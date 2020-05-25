@@ -5,7 +5,6 @@
 ![cicd](https://github.com/Veetaha/vee-news-analyzer/workflows/cicd/badge.svg)
 [![badge](https://img.shields.io/badge/docs-master-blue.svg)](https://veetaha.github.io/vee-news-analyzer/vna/)
 
-
 This is my university course work for database classes.
 
 The project uses [Kaggle news dataset][kaggle-dataset].
@@ -17,6 +16,13 @@ The ingest process is implemented by `vna_data_sync` component.
 After this process is done you can use `vna` cli to do fulltext search,
 query significant words statistics and news sentiments using various `Elasticsearch`
 analysis and query APIs.
+
+# Install the latest release
+
+```bash
+curl https://github.com/Veetaha/vee-news-analyzer/releases/latest/download/vna -L -o vna
+chmod +x vna
+```
 
 # Example analytics
 
