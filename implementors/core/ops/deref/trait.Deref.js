@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["stdx"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html\" title=\"trait core::ops::deref::Deref\">Deref</a> for <a class=\"struct\" href=\"stdx/struct.NonHollowString.html\" title=\"struct stdx::NonHollowString\">NonHollowString</a>","synthetic":false,"types":["stdx::NonHollowString"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,4 @@
+(function() {var implementors = {};
+implementors["vna_data_sync"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"vna_data_sync/struct.Stats.html\" title=\"struct vna_data_sync::Stats\">Stats</a>","synthetic":false,"types":["vna_data_sync::Stats"]}];
+implementors["vna_es"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"vna_es/struct.IndexVersion.html\" title=\"struct vna_es::IndexVersion\">IndexVersion</a>","synthetic":false,"types":["vna_es::index_version::IndexVersion"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

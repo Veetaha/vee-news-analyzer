@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["register_repo",""],["restore_from_snapshot",""],["take_snapshot",""]]});

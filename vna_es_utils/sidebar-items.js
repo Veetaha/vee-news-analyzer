@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["create_elasticsearch_client","Create an instance of simple proxy-less elasticsearch client (not the one on Elastic cloud)"],["try_create_elasticsearch_client",""]],"macro":[["elasticsearch_client_or_return",""]],"mod":[["es_types",""]],"trait":[["Success",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["CliSubcommand",""],["Snapshots",""],["Stats",""]],"fn":[["create_category_analysis_chart",""],["create_chart",""],["create_sentiment_analysis_chart",""],["create_significant_words_chart",""],["main",""],["open_svg_in_google_chrome",""],["stats_to_chart_data",""]],"struct":[["ChartOpts",""],["CliArgs",""],["DataSourceArgs",""]]});

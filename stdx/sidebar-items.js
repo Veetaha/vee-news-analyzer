@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["debug_time_it","Returns a struct which prints execution time info in its `Drop` impl. It logs the inital call as well."],["on_drop","Returns a struct which runs the specified closure in its `Drop` impl"]],"struct":[["NonHollowString","Non-empty string that contains at least 1 character other than whitespace"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["SentimentPolarity",""]],"mod":[["snapshots",""]],"struct":[["Article","Main document type which is stored in Elasticsearch"],["CreateArticlesIndexOpts",""],["FulltextSearchOpts",""],["IndexVersion",""],["SignificantWordsOpts",""],["Stats",""],["StatsOpts",""],["WithId",""]]});

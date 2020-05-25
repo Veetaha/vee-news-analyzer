@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AggrsResponse",""],["Doc",""],["GetAliasesResponse",""],["IndexAlias",""],["IndexAliases",""],["SearchHits",""],["SearchResponse",""],["SignificantTextAggr",""],["SignificantTextAggrBucket",""],["TermsAggr",""],["TermsAggrBucket",""]]});

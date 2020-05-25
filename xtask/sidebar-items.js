@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["codegen",""],["pre_commit","pre-commit hook for code formatting and codegen."]]});
