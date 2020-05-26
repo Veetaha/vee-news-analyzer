@@ -376,6 +376,7 @@ pub mod snapshots {
         Ok(())
     }
 
+    /// Restores elasticsearch from snapshot.
     pub async fn restore_from_snapshot(
         elastic: &Elasticsearch,
         repo: &stdx::NonHollowString,
